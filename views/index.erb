@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <!--<link rel="stylesheet" href="bootstrap.min.css">-->
+</head>
+<body>
+<div class="container">
+  <div class="panel panel-primary">
+  <h1 class="panel-heading">WebSockets admin dashboard</h1>
+<div class="panel-body">
+  <h2>online devices:</h2>
+  <div id="online"></div>
+  <div id="log"></div>
+  <div class="dev"></div>
+  <hr>
+  <div id="chat-log"></div>
+
+</div>
+  </div>
+    <div id="form">
+    <input type="text" id="message">
+    <button id="clear">Clear</button>
+    <button id="disconnect" class="btn btn-danger">Disconnect</button>
+  </div>
+</div>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+
+    var socket, host;
+    host = "ws://localhost:3001";
+//    $( document ).ready(function() {
+    function connect() {
+      try {
+        socket = new WebSocket(host);
+
+        socket.onopen = function () {
+          addMessage("Socket Status: " + socket.readyState + " (open)");
+        }
+        socket.onclose = function () {
+          addMessage("Socket Status: " + socket.readyState + " (closed)");
+        }
+        socket.onmessage = function (msg) {
+          addMessage(msg.data);
+        }
+      } catch (exception) {
+        addMessage("Error: " + exception);
+      }
+    }
+
+    function addMessage(msg) {
+      if (msg.charAt(0) == "*") {
+        msg = msg.slice(1, msg.length);
+        if (msg == "") {
+          msg = "No device online."
+          $("#online").text("");
+        } else {
+          $("#online").text("");
+          var ar = msg.split(",");
+          ar.forEach(function (id) {
+            $("#online").append("<button>" + id + "</button>");
+          })
+        }
+//          $("#log").text(msg);
+      } else {
+        $("#chat-log").append("<p>" + msg + "</p>");
+      }
+    }
+
+    function send() {
+      var text = $("#message").val();
+      if (text == '') {
+        addMessage("Please Enter a Message");
+        return;
+      }
+      try {
+        socket.send(text);
+        addMessage("You: " + text)
+      } catch (exception) {
+        addMessage("Failed To Send")
+      }
+      $("#message").val('');
+    }
+
+    $(function () {
+      connect();
+    });
+//    $('#online').find("button").click(function () { TODO
+//      $("#log").append("nazev zarizenia a jeho funcke")
+//    });
+    $('#message').keypress(function (event) {
+      if (event.keyCode == '13') {
+        send();
+      }
+    });
+    $("#disconnect").click(function () {
+      socket.close()
+    });
+    $("#clear").click(function () {
+      $("#chat-log").text('')
+    });
+//  }
+</script>
+</body>
+</html>
