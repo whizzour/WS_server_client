@@ -4,9 +4,19 @@ id = ARGV[0]
 id = "test_device" unless id
 fn = "$bluetooth,red_light"
 
-EM.run do
+class Device
+  def initialize
+    @bluetooth = false
+    @red_light = false
+  end
+def toggle
+  @red_light = @red_light ? false : true
+end
+end
 
-  ws = WebSocket::EventMachine::Client.connect(:host => '192.168.53.101', :port => 3001, :headers => {:Origin => "test_device"})
+EM.run do
+device = Device.new
+  ws = WebSocket::EventMachine::Client.connect(:host => '192.168.80.1', :port => 3001, :headers => {:Origin => "test_device"})
 
   ws.onopen do
 
@@ -16,7 +26,11 @@ EM.run do
   ws.onmessage do |msg, type|
     if msg == "fn"
       ws.send fn
+    elsif msg == "red_light"
+      device.toggle
+    p device
     end
+
     puts "Received message: #{msg}"
   end
 

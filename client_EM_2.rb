@@ -1,8 +1,9 @@
 require 'websocket-eventmachine-client'
 
+fn = "$EMP,blue_light"
 EM.run do
 
-  ws = WebSocket::EventMachine::Client.connect(:host => '192.168.53.101', :port => 3001, :headers => {:origin => "1337"})
+  ws = WebSocket::EventMachine::Client.connect(:host => '192.168.80.1', :port => 3001, :headers => {:Origin => "1337"})
 
   ws.onopen do
 
@@ -10,6 +11,9 @@ EM.run do
   end
 
   ws.onmessage do |msg, type|
+    if msg == "fn"
+      ws.send fn
+      end
     puts "Received message: #{msg}"
   end
 

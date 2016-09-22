@@ -2,7 +2,7 @@
 <html>
 <head>
   <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-  <!--<link rel="stylesheet" href="bootstrap.min.css">-->
+  <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
 <div class="container">
@@ -11,16 +11,16 @@
 <div class="panel-body">
   <h2>online devices:</h2>
   <div id="online"></div>
-  <div id="log"></div>
-  <div class="dev"></div>
-  <hr>
-  <div id="chat-log"></div>
-
+  <div class =  "row" >
+    <hr>
+    <div class="col-md-8" id="chat-log"></div>
+    <div class= "col-md-4" id="log"></div>
+  </div>
 </div>
   </div>
     <div id="form">
-    <input type="text" id="message">
-    <button id="clear">Clear</button>
+    <input type="text" id="message" class="hidden">
+    <!--<button id="clear">Clear</button>-->
     <button id="disconnect" class="btn btn-danger">Disconnect</button>
   </div>
 </div>
@@ -48,21 +48,53 @@
       }
     }
 
+        $('#online').on('click', 'button', function () {
+            var current = $(this);
+            var koleno = current.data('nick');
+            current.siblings().removeClass("btn-warning");
+            current.toggleClass("btn-warning");
+            $('#log').children().remove();
+            if(current.hasClass("btn-warning")){
+            $("#message").val(koleno+",fn");
+            send();
+            }
+        });
+
+    $('#log').on('click', 'button', function () {
+        var current = $(this);
+        var device = $('#log').find('h3').text();
+        $("#message").val(device+","+current.data("func"));
+        if (current.data("func") == "disconnect"){$('#log').children().remove()};
+        send();
+    });
+
+
     function addMessage(msg) {
       if (msg.charAt(0) == "*") {
         msg = msg.slice(1, msg.length);
         if (msg == "") {
           msg = "No device online."
-          $("#online").text("");
+          $("#online").text(msg);
         } else {
           $("#online").text("");
           var ar = msg.split(",");
           ar.forEach(function (id) {
-            $("#online").append("<button>" + id + "</button>");
+            $("#online").append($("<button data-nick="+id+">" + id + "</button>"));
           })
         }
 //          $("#log").text(msg);
-      } else {
+      }
+      else if (msg.charAt(0) == "$"){
+        msg = msg.slice(1, msg.length);
+          var name = $('#online').find('.btn-warning').data("nick");
+          $("#log").append($("<h3>"+name+"</h3>"));
+        var ar = msg.split(",");
+          $("#log").append($("<button class='btn-block btn-danger' data-func='disconnect'>Disconnect</button>"));
+        ar.forEach(function (id) {
+          $("#log").append($("<button class='btn-block' data-func="+id+">" + id + "</button>"));
+        })
+      }
+      else {
         $("#chat-log").append("<p>" + msg + "</p>");
       }
     }
@@ -75,7 +107,7 @@
       }
       try {
         socket.send(text);
-        addMessage("You: " + text)
+//        addMessage("You: " + text)
       } catch (exception) {
         addMessage("Failed To Send")
       }
@@ -94,8 +126,8 @@
       }
     });
     $("#disconnect").click(function () {
-      socket.close()
-    });
+      socket.close();
+            });
     $("#clear").click(function () {
       $("#chat-log").text('')
     });
