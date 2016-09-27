@@ -29,7 +29,7 @@
 
     var socket, host;
     host = "ws://localhost:3001";
-//    $( document ).ready(function() {
+
     function connect() {
       try {
         socket = new WebSocket(host);
@@ -117,9 +117,7 @@
     $(function () {
       connect();
     });
-//    $('#online').find("button").click(function () { TODO
-//      $("#log").append("nazev zarizenia a jeho funcke")
-//    });
+
     $('#message').keypress(function (event) {
       if (event.keyCode == '13') {
         send();
@@ -131,7 +129,7 @@
     $("#clear").click(function () {
       $("#chat-log").text('')
     });
-//  }
+
 </script>
 </body>
 </html>
