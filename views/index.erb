@@ -7,21 +7,24 @@
 <body>
 <div class="container">
   <div class="panel panel-primary">
-  <h1 class="panel-heading">WebSockets admin dashboard</h1>
-<div class="panel-body">
-  <h2>online devices:</h2>
-  <div id="online"></div>
-  <div class =  "row" >
-    <hr>
-    <div class="col-md-8" id="chat-log"></div>
-    <div class= "col-md-4" id="log"></div>
+    <h1 class="panel-heading">WebSockets admin dashboard</h1>
+    <div class="panel-body">
+      <h2>online devices:</h2>
+      <div id="online"></div>
+      <div class="row">
+        <hr>
+        <div class="col-md-8" id="chat-log"></div>
+        <div class="col-md-4" id="log"></div>
+      </div>
+    </div>
   </div>
-</div>
-  </div>
-    <div id="form">
+  <div id="form">
     <input type="text" id="message" class="hidden">
     <!--<button id="clear">Clear</button>-->
     <button id="disconnect" class="btn btn-danger">Disconnect</button>
+    <button id="list">Show all</button>
+    <button id="new">Add device</button>
+    <input type="text" id="add" class="hidden">
   </div>
 </div>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
@@ -29,107 +32,123 @@
 
     var socket, host;
     host = "ws://localhost:3001";
-
+    //    $( document ).ready(function() {
     function connect() {
-      try {
-        socket = new WebSocket(host);
+        try {
+            socket = new WebSocket(host);
 
-        socket.onopen = function () {
-          addMessage("Socket Status: " + socket.readyState + " (open)");
+            socket.onopen = function () {
+//          addMessage("Socket Status: " + socket.readyState + " (open)");
+            }
+            socket.onclose = function () {
+          addMessage("Disconnected");
+            }
+            socket.onmessage = function (msg) {
+                addMessage(msg.data);
+            }
+        } catch (exception) {
+            addMessage("Error: " + exception);
         }
-        socket.onclose = function () {
-          addMessage("Socket Status: " + socket.readyState + " (closed)");
-        }
-        socket.onmessage = function (msg) {
-          addMessage(msg.data);
-        }
-      } catch (exception) {
-        addMessage("Error: " + exception);
-      }
     }
 
-        $('#online').on('click', 'button', function () {
-            var current = $(this);
-            var koleno = current.data('nick');
-            current.siblings().removeClass("btn-warning");
-            current.toggleClass("btn-warning");
-            $('#log').children().remove();
-            if(current.hasClass("btn-warning")){
-            $("#message").val(koleno+",fn");
+    $('#list').on('click', function () {
+        $("#message").val("server,list");
+        send();
+    });
+
+    $('#new').on('click', function () {
+        $('#add').toggleClass("hidden")
+    });
+
+    $('#online').on('click', 'button', function () {
+        var current = $(this);
+        var koleno = current.data('nick');
+        current.siblings().removeClass("btn-warning");
+        current.toggleClass("btn-warning");
+        $('#log').children().remove();
+        if (current.hasClass("btn-warning")) {
+            $("#message").val(koleno + ",fn");
             send();
-            }
-        });
+        }
+    });
 
     $('#log').on('click', 'button', function () {
         var current = $(this);
         var device = $('#log').find('h3').text();
-        $("#message").val(device+","+current.data("func"));
-        if (current.data("func") == "disconnect"){$('#log').children().remove()};
+        $("#message").val(device + "," + current.data("func"));
+        if (current.data("func") == "disconnect") {
+            $('#log').children().remove()
+        }
         send();
     });
 
 
     function addMessage(msg) {
-      if (msg.charAt(0) == "*") {
-        msg = msg.slice(1, msg.length);
-        if (msg == "") {
-          msg = "No device online."
-          $("#online").text(msg);
-        } else {
-          $("#online").text("");
-          var ar = msg.split(",");
-          ar.forEach(function (id) {
-            $("#online").append($("<button data-nick="+id+">" + id + "</button>"));
-          })
+        if (msg.charAt(0) == "*") {
+            msg = msg.slice(1, msg.length);
+            if (msg == "") {
+                $("#online").text("No device online.");
+            } else {
+                if ($("#online").text() == "No device online."){$("#online").text("")}
+                var ar = msg.split(",");
+                ar.forEach(function (id) {
+                    $("#online").append($("<button data-nick=" + id + ">" + id + "</button>"));
+                })
+            }
+//
+        } else if (msg.charAt(0) == "-") {
+            msg = msg.slice(1, msg.length);
+            $('#online button').filter('[data-nick="' + msg + '"]').remove();
         }
-//          $("#log").text(msg);
-      }
-      else if (msg.charAt(0) == "$"){
-        msg = msg.slice(1, msg.length);
-          var name = $('#online').find('.btn-warning').data("nick");
-          $("#log").append($("<h3>"+name+"</h3>"));
-        var ar = msg.split(",");
-          $("#log").append($("<button class='btn-block btn-danger' data-func='disconnect'>Disconnect</button>"));
-        ar.forEach(function (id) {
-          $("#log").append($("<button class='btn-block' data-func="+id+">" + id + "</button>"));
-        })
-      }
-      else {
-        $("#chat-log").append("<p>" + msg + "</p>");
-      }
+        else if (msg.charAt(0) == "$") {
+            msg = msg.slice(1, msg.length);
+            var name = $('#online').find('.btn-warning').data("nick");
+            $("#log").append($("<h3>" + name + "</h3>"));
+            var ar = msg.split(",");
+            $("#log").append($("<button class='btn-block btn-danger' data-func='disconnect'>Disconnect</button>"));
+            ar.forEach(function (id) {
+                $("#log").append($("<button class='btn-block' data-func=" + id + ">" + id + "</button>"));
+            })
+        }
+        else {
+            $("#chat-log").append("<p>" + msg + "</p>");
+        }
     }
 
     function send() {
-      var text = $("#message").val();
-      if (text == '') {
-        addMessage("Please Enter a Message");
-        return;
-      }
-      try {
-        socket.send(text);
+        var text = $("#message").val();
+//        if (text == '') {
+//            addMessage("Please Enter a Message");
+//            return;
+//        }
+        try {
+            socket.send(text);
 //        addMessage("You: " + text)
-      } catch (exception) {
-        addMessage("Failed To Send")
-      }
-      $("#message").val('');
+        } catch (exception) {
+            addMessage("Failed To Send")
+        }
+        $("#message").val('');
     }
 
     $(function () {
-      connect();
+        connect();
     });
 
-    $('#message').keypress(function (event) {
-      if (event.keyCode == '13') {
-        send();
-      }
+    $('#add').keypress(function (event) {
+        if (event.keyCode == '13') {
+            var new_dev = $('#add').val();
+            $("#message").val(new_dev+",new");
+            send();
+            $('#add').val("");
+        }
     });
     $("#disconnect").click(function () {
-      socket.close();
-            });
-    $("#clear").click(function () {
-      $("#chat-log").text('')
+        socket.close();
     });
-
+    $("#clear").click(function () {
+        $("#chat-log").text('')
+    });
+    //  }
 </script>
 </body>
 </html>

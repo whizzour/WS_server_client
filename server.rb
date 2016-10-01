@@ -2,56 +2,83 @@ require 'thin'
 require 'em-websocket'
 require 'sinatra/base'
 require 'tilt/erubis'
-# class Device
-#   attr_reader :ws, :nick
-# def initialize(ws)
-#   @ws = ws
-#   @nick = nil
-# end
-#   def get_id(id)
-#     @nick = id
-#   end
-#
-# end
+require "csv"
+
+# * = nove spojeni / list online zarizeni
+# - = disconect spojeni
 
 class Database
   attr_reader :online_devices, :authorized, :admin
+
   def initialize
     @online_devices = {}
-    @authorized = {"1337" => true, "test_device" => true}
+    @authorized = read_auth("auth.csv")
     @admin = nil
   end
+
+  def read_auth(file)
+    hash = {}
+    CSV.open(file,"r") do |csv|
+      csv.each{|line| line.each{|d| hash[d] = true}}
+    end
+    hash
+  end
+
+  def write_auth(file)
+    temp = []
+    CSV.open(file,"w") do |csv|
+      @authorized.each_key {|id| temp << id }
+    csv << temp
+    end
+
+  end
+
   def admin_login(admin)
     @admin = admin
     puts "Admin is online"
     @admin.send("#{get_time} # Admin has connected")
   end
+
   def get_time
-    Time.now.strftime"%H:%M:%S"
+    Time.now.strftime "%H:%M:%S"
   end
 
 
   def send_online(curr=nil)
     return if @admin == nil
-    list = ""
-    @online_devices.each_value do |val|
-      list += "," unless list == ""
-      list += val
+    if curr == nil
+      list = ""
+      @online_devices.each_value do |val|
+        list += "," unless list == ""
+        list += val
+      end
+      @admin.send("*#{list}")
+    else
+      @admin.send("*#{curr}")
+      @admin.send("#{get_time} # #{curr} has connected.")
     end
-    @admin.send("*#{list}")
-    @admin.send("#{get_time} # #{curr} has connected.") if curr != nil
+
   end
+
   def delete_offline(ws)
     curr = @online_devices[ws]
     @online_devices.delete ws
+    @admin.send("-#{curr}")
     @admin.send("#{get_time} # #{curr} has disconnected.")
-    end
-def send_fn(fn)
-  @admin.send(fn)
-end
+  end
+
+  def send_fn(fn)
+    @admin.send(fn)
+  end
 
   def disconnect(r)
     @online_devices.key(r).close
+  end
+
+  def send_authorized
+    tmp = []
+    @authorized.each_key {|id| tmp << id}
+    @admin.send("Authorized devices: #{tmp.join(",")}")
   end
 end
 
@@ -64,51 +91,56 @@ EM.run do
     end
   end
 
-EM::WebSocket.start(:host => '0.0.0.0', :port => '3001') do |ws|
+  EM::WebSocket.start(:host => '0.0.0.0', :port => '3001') do |ws|
 
-  ws.onopen do |handshake|
-    p handshake
-id_from_origin = handshake.headers["Origin"]
-    if sesion.authorized.include? id_from_origin
-      ws.send "welcome"
-      sesion.online_devices[ws] = id_from_origin
-      sesion.send_online(id_from_origin)
-      sesion.admin.send ""
-    #elseif handshake.headers["origin"] ==
-    elsif id_from_origin == "http://localhost:3000"
+    ws.onopen do |handshake|
 
-      sesion.admin_login(ws)
-      #sesion.admin.send("*#{sesion.online_devices}")
-      sesion.send_online
-    else
-      puts "unauthorized acces"
-      p handshake.headers["Origin"]
-      ws.send "die"
-    end
-  end
+      id_from_origin = handshake.headers["Origin"]
+      if sesion.authorized.include? id_from_origin
+        ws.send "welcome"
+        sesion.online_devices[ws] = id_from_origin
+        sesion.send_online(id_from_origin)
+        # sesion.admin.send ""
+      elsif id_from_origin == "http://localhost:3000"
 
-  ws.onclose do
-    sesion.delete_offline(ws)
-    sesion.send_online
-  end
-
-  ws.onmessage do |msg|
-    if ws == sesion.admin
-      receiver,data = msg.split(",")
-      if data == "disconnect"
-      sesion.disconnect receiver
+        sesion.admin_login(ws)
+        #sesion.admin.send("*#{sesion.online_devices}")
+        sesion.send_online
       else
-      sesion.online_devices.each {|ws,id| ws.send data if id == receiver}
+        puts "unauthorized acces"
+        p handshake.headers["Origin"]
+        ws.send "die"
       end
+    end
+
+    ws.onclose do
+      sesion.delete_offline(ws)
+    end
+
+    ws.onmessage do |msg|
+      if ws == sesion.admin
+        receiver, data = msg.split(",")
+        if data == "disconnect"
+          sesion.disconnect receiver
+        elsif data == "list"
+          sesion.send_authorized
+        elsif data == "new"
+          p msg
+          sesion.authorized[receiver] = true
+          sesion.write_auth("auth.csv")
+          sesion.admin.send("#{receiver} was authorized.")
+        else
+          sesion.online_devices.each { |ws, id| ws.send data if id == receiver }
+        end
 
       elsif sesion.online_devices.has_key?(ws)
-    sesion.send_fn msg
+        sesion.send_fn msg
 
-    else
-    puts msg
+      else
+        puts msg
       end
+    end
+p sesion.authorized
   end
-
-end
-App.run! :port => 3000
+  App.run! :port => 3000
 end
