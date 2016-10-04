@@ -4,6 +4,8 @@ require 'sinatra/base'
 require 'tilt/erubis'
 require "csv"
 
+# server > admin
+
 # * = nove spojeni / list online zarizeni
 # - = disconect spojeni
 
@@ -100,15 +102,16 @@ EM.run do
         ws.send "welcome"
         sesion.online_devices[ws] = id_from_origin
         sesion.send_online(id_from_origin)
-        # sesion.admin.send ""
+
       elsif id_from_origin == "http://localhost:3000"
 
         sesion.admin_login(ws)
-        #sesion.admin.send("*#{sesion.online_devices}")
         sesion.send_online
+      
       else
+
         puts "unauthorized acces"
-        p handshake.headers["Origin"]
+        p handshake.headers["Origin"] #TODO write to file
         ws.send "die"
       end
     end
@@ -130,7 +133,7 @@ EM.run do
           sesion.write_auth("auth.csv")
           sesion.admin.send("#{receiver} was authorized.")
         else
-          sesion.online_devices.each { |ws, id| ws.send data if id == receiver }
+          sesion.online_devices.each { |ws, id| ws.send data if id == receiver } #TODO creat method
         end
 
       elsif sesion.online_devices.has_key?(ws)
@@ -140,7 +143,7 @@ EM.run do
         puts msg
       end
     end
-p sesion.authorized
+
   end
   App.run! :port => 3000
 end
